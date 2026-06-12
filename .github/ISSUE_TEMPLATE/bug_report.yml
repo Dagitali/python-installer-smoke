@@ -1,0 +1,108 @@
+# bug_report.yml
+# python-installer-smoke
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub issue template for reporting reproducible bugs.
+#
+# Responsibilities
+# - Gather the minimum information needed to reproduce and triage defects.
+#
+# Maintainer Notes
+# - Keep the prompts focused on actionable reproduction details for
+#   maintainers.
+#
+# References
+# - GitHub issue template configuration documentation: https://docs.github.com/en/issues/tracking-your-work-with-issues/configuring-issue-templates-for-your-repository
+# - GitHub issue forms documentation: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository
+# - GitHub issue forms validation reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/adding-validation-to-your-issue-form
+# - GitHub issue form best practices: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/best-practices-for-issue-forms
+# - GitHub issue forms configuration reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/configuring-issue-forms-for-your-repository
+# - GitHub issue forms checkboxes reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/using-checkboxes-in-your-issue-form
+# - GitHub issue forms dropdowns reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/using-dropdowns-in-your-issue-form
+# - GitHub bug report issue form example: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/example-bug-report-template
+# - GitHub issue form field types reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/reference-for-issue-form-fields
+# - GitHub issue form field options reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/reference-for-issue-form-field-options
+# - GitHub issue form field rendering reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/reference-for-issue-form-field-rendering
+# - GitHub issue forms inputs reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/using-inputs-in-your-issue-form
+# - GitHub issue forms markdown reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/using-markdown-in-your-issue-form
+# - GitHub issue forms rendering options reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/using-rendering-options-in-your-issue-form
+# - GitHub issue forms textareas reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/using-textareas-in-your-issue-form
+
+---
+
+name: Bug Report
+description: Report a reproducible defect in python-installer-smoke.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please include enough detail to reproduce the problem in a workflow or on a clean checkout.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What failed, and what did you expect instead?
+      placeholder: A short description of the bug and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Provide exact commands, config, and sample inputs needed to reproduce the bug.
+      placeholder: |
+        1. Use Dagitali/python-installer-smoke@... in a workflow with ...
+        2. Run the workflow on ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: Paste the failing workflow log output or assertion.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: python-installer-smoke version
+      description: Release tag, branch, or commit SHA used in the workflow.
+      placeholder: v0.3.4
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Requested Python version and actual `python --version` output, if Python started.
+      placeholder: Python 3.13.2
+    validations:
+      required: true
+  - type: dropdown
+    id: usage-mode
+    attributes:
+      label: Usage mode
+      description: How was python-installer-smoke used?
+      options:
+        - "uses: Dagitali/python-installer-smoke@v1"
+        - "uses: Dagitali/python-installer-smoke@<version tag>"
+        - "uses: Dagitali/python-installer-smoke@<commit SHA>"
+        - "uses: ./ from a checkout"
+        - other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I can reproduce this on the current default branch or latest release.
+          required: true

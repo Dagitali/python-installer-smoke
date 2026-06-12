@@ -1,0 +1,87 @@
+# feature_request.yml
+# python-installer-smoke
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub issue template for proposing user-facing features.
+#
+# Responsibilities
+# - Gather concrete problem statements, proposed solutions, and alternatives.
+#
+# Maintainer Notes
+# - Keep this template oriented toward actionable product improvements rather
+#   than general support questions.
+#
+# References
+# - GitHub issue template configuration documentation: https://docs.github.com/en/issues/tracking-your-work-with-issues/configuring-issue-templates-for-your-repository
+# - GitHub issue form best practices: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/best-practices-for-issue-forms
+# - GitHub issue forms configuration reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/configuring-issue-forms-for-your-repository
+# - GitHub feature request issue form example: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/example-feature-request-template
+# - GitHub issue form field types reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/reference-for-issue-form-fields
+# - GitHub issue form field options reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/reference-for-issue-form-field-options
+# - GitHub issue form field rendering reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/reference-for-issue-form-field-rendering
+# - GitHub issue form field validation reference: https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-issue-forms-for-your-repository/reference-for-issue-form-field-validations
+
+---
+
+name: Feature Request
+description: Propose a user-facing capability or workflow improvement.
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for concrete feature requests. For general questions or exploratory ideas, use GitHub Discussions instead.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What workflow is blocked or unnecessarily difficult today?
+      placeholder: Describe the current pain point.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior, input, output, or docs change you want.
+      placeholder: Describe the requested feature.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds have you tried, and why are they insufficient?
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example GitHub Actions workflow snippet
+      description: Include a workflow snippet or action configuration if relevant.
+      render: yaml
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - GitHub Actions action inputs
+        - GitHub Actions action outputs
+        - Runner environment
+        - Python version support
+        - Operating system support
+        - Documentation
+        - CI or release automation
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for related requests.
+          required: true
+        - label: This request describes a user-facing need rather than a broad brainstorming topic.
+          required: true
