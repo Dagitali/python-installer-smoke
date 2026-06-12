@@ -1,0 +1,32 @@
+# These are supported funding model platforms
+# Activate only links that resolve to real funding profiles.
+# GitHub reads this file from the default branch only.
+#
+# References
+# - Buy Me a Coffee service: https://www.buymeacoffee.com/
+# - Community Bridge service: https://communitybridge.org/
+# - GitHub Sponsors documentation: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+# - IssueHunt service: https://issuehunt.io/
+# - Ko-fi service: https://ko-fi.com/
+# - Liberapay service: https://liberapay.com/
+# - Open Collective service: https://opencollective.com/
+# - Otechie service: https://otechie.com/
+# - Patreon service: https://www.patreon.com/
+# - Polar service: https://polar.sh/
+# - Thanks Dev service: https://thanks.dev/
+# - Tidelift service: https://tidelift.com/
+
+---
+
+github: [Dagitali]
+# patreon: your-patreon-username
+# open_collective: your-open-collective
+buy_me_a_coffee: djrlj694
+# ko_fi: Dagitali
+# tidelift: pypi/python-installer-smoke
+# community_bridge: your-community-bridge-project-name
+# liberapay: your-liberapay-username
+# issuehunt: your-issuehunt-username
+# otechie: your-otechie-username
+# polar: Dagitali
+# thanks_dev: u/gh/Dagitali
