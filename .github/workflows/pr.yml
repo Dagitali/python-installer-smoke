@@ -72,7 +72,8 @@ on:
 permissions: {}
 
 env:
-  SMOKE_PYTHON_VERSION: '3.13'
+  SMOKE_COMMAND_NAME: installer-smoke-fixture
+  SMOKE_PACKAGE_NAME: installer-smoke-fixture
 
 jobs:
   pr-target-guard:
@@ -160,53 +161,44 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
+      - name: Build fixture wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fixture_dir="${RUNNER_TEMP}/installer-smoke-fixture"
+          mkdir -p "$fixture_dir/src/installer_smoke_fixture"
+
+          cat > "$fixture_dir/pyproject.toml" <<'TOML'
+          [build-system]
+          requires = ["setuptools>=69", "wheel"]
+          build-backend = "setuptools.build_meta"
+
+          [project]
+          name = "installer-smoke-fixture"
+          version = "0.1.0"
+
+          [project.scripts]
+          installer-smoke-fixture = "installer_smoke_fixture.cli:main"
+          TOML
+
+          cat > "$fixture_dir/src/installer_smoke_fixture/__init__.py" <<'PY'
+          __all__ = []
+          PY
+
+          cat > "$fixture_dir/src/installer_smoke_fixture/cli.py" <<'PY'
+          def main() -> None:
+              print("installer-smoke-fixture ok")
+          PY
+
+          python -m pip install --upgrade build
+          python -m build --wheel --outdir dist "$fixture_dir"
       - name: Run local action
         uses: ./
         with:
-          python-version: ${{ env.SMOKE_PYTHON_VERSION }}
-      - name: Verify requested Python is active
-        shell: bash
-        run: |
-          python --version
-          python - <<'PY'
-          import platform
-          import sys
-
-          expected = "${{ env.SMOKE_PYTHON_VERSION }}"
-          actual = platform.python_version()
-          print(f"expected={expected}")
-          print(f"actual={actual}")
-          if not actual.startswith(expected + "."):
-              sys.exit(f"Expected Python {expected}.x, got {actual}")
-          PY
-
-  optional-inputs:
-    name: Smoke test optional inputs
-    runs-on: ubuntu-latest
-    needs: [metadata]
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
-      - name: Run local action with pip options
-        uses: ./
-        with:
-          python-version: ${{ env.SMOKE_PYTHON_VERSION }}
-          pip-version: '25.0'
-          upgrade-pip: 'false'
-          pip-install: 'packaging==25.0'
-      - name: Verify optional input behavior
-        shell: bash
-        run: |
-          python - <<'PY'
-          import importlib.metadata
-
-          pip_version = importlib.metadata.version("pip")
-          version = importlib.metadata.version("packaging")
-          print(f"pip={pip_version}")
-          print(f"packaging={version}")
-          if pip_version != "25.0":
-              raise SystemExit(f"Expected pip 25.0, got {pip_version}")
-          if version != "25.0":
-              raise SystemExit(f"Expected packaging 25.0, got {version}")
-          PY
+          artifact-wheel: dist/installer_smoke_fixture-0.1.0-py3-none-any.whl
+          command-name: ${{ env.SMOKE_COMMAND_NAME }}
+          installer-smoke-installers: pip,pipx,uv
+          package-name: ${{ env.SMOKE_PACKAGE_NAME }}
+          smoke-commands: |
+            installer-smoke-fixture
