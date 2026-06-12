@@ -1,0 +1,204 @@
+# pr.yml
+# python-installer-smoke
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Actions workflow for required pull-request (PR) gates.
+#
+# Responsibilities
+# - Run required pull-request and merge-queue integration gates for the
+#   repository action.
+# - Validate workflow and action metadata before changes reach protected
+#   branches.
+# - Run a fast smoke test that executes the action from the checked-out
+#   repository.
+#
+# Maintainer Notes
+# - Global permissions are intentionally omitted; each job declares the minimum
+#   permissions it needs.
+# - External GitHub Actions are pinned to full commit SHAs to reduce supply-
+#   chain risk.
+# - Heavier cross-platform action validation lives in `ci.yml`; keep this
+#   workflow focused on the faster required baseline used by branch protection.
+# - The dynamic run name is part of the workflow contract: it should identify
+#   the short-lived source branch and the long-running target branch for PR
+#   review clarity.
+#
+# References
+# - GitHub Actions metadata syntax: https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
+# - GitHub Actions expressions reference: https://docs.github.com/en/actions/learn-github-actions/expressions
+# - GitHub Actions security hardening guide: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+# - GitHub Actions workflow syntax reference: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+# - GitHub pull request documentation: https://docs.github.com/en/pull-requests
+# - GitHub merge queue documentation: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-merge-queues
+
+---
+
+name: PR Gates
+
+run-name: >-
+  ${{
+    github.event_name == 'pull_request' &&
+    format('PR Gates: {0} -> {1}', github.head_ref, github.base_ref) ||
+    github.event_name == 'push' &&
+    format('PR Gates: push on {0}', github.ref_name) ||
+    github.event_name == 'merge_group' &&
+    format('PR Gates: merge queue for {0}', github.ref_name) ||
+    'PR Gates'
+  }}
+
+on:
+  push:
+    branches:
+      # Protected and release-oriented GitFlow branches
+      - main
+      - develop
+      - '**/release/**'
+      - '**/hotfix/**'
+
+      # GitFlow working branches
+      - '**/feature/**'
+      - '**/bugfix/**'
+
+      # Extended working branches
+      - '**/chore/**'
+      - '**/ci/**'
+      - '**/docs/**'
+  pull_request:
+    branches: [main, develop]
+  merge_group:
+    branches: [main, develop]
+
+permissions: {}
+
+env:
+  SMOKE_COMMAND_NAME: installer-smoke-fixture
+  SMOKE_PACKAGE_NAME: installer-smoke-fixture
+
+jobs:
+  pr-target-guard:
+    name: Guard PR target branch
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    permissions:
+      contents: read
+    steps:
+      - name: Enforce GitFlow PR target rules
+        shell: bash
+        run: |
+          if [[ '${{ github.event_name }}' == 'merge_group' ]]; then
+            echo 'Merge group event inherits PR target validation from the queued pull requests.'
+            exit 0
+          fi
+
+          head_ref='${{ github.head_ref }}'
+          base_ref='${{ github.base_ref }}'
+
+          echo "head_ref=$head_ref"
+          echo "base_ref=$base_ref"
+
+          if [[ "$base_ref" == 'main' ]]; then
+            if [[ "$head_ref" == hotfix/* || "$head_ref" == release/* ]]; then
+              echo 'PR target is valid for main.'
+              exit 0
+            fi
+
+            echo 'Only release/* and hotfix/* branches may target main.'
+            exit 1
+          fi
+
+          if [[ "$base_ref" == 'develop' ]]; then
+            if [[ "$head_ref" == feature/* ||
+                  "$head_ref" == bugfix/* ||
+                  "$head_ref" == chore/* ||
+                  "$head_ref" == ci/* ||
+                  "$head_ref" == docs/* ]]; then
+              echo 'Working branch PR target is valid for develop.'
+              exit 0
+            fi
+
+            echo 'Only feature/*, bugfix/*, chore/*, ci/*, and docs/* branches may target develop.'
+            exit 1
+          fi
+
+          if [[ "$base_ref" != 'main' && "$base_ref" != 'develop' ]]; then
+            echo 'This workflow only enforces PR targets for main and develop.'
+            exit 0
+          fi
+
+  metadata:
+    name: Validate repository metadata
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
+      - name: Require action metadata
+        shell: bash
+        run: |
+          if [[ ! -f action.yml && ! -f action.yaml ]]; then
+            echo 'Expected action.yml or action.yaml at the repository root.'
+            exit 1
+          fi
+      - name: Validate YAML syntax
+        run: |
+          ruby -e 'require "yaml"; ARGV.each { |path| YAML.load_file(path); puts "ok #{path}" }' \
+            .github/dependabot.yml \
+            .github/release.yml \
+            .github/workflows/ci.yml \
+            .github/workflows/cd.yml \
+            .github/workflows/pr.yml \
+            .github/ISSUE_TEMPLATE/bug_report.yml \
+            .github/ISSUE_TEMPLATE/config.yml \
+            .github/ISSUE_TEMPLATE/feature_request.yml \
+            "${{ hashFiles('action.yml') != '' && 'action.yml' || 'action.yaml' }}"
+
+  action-smoke:
+    name: Smoke test action
+    runs-on: ubuntu-latest
+    needs: [metadata]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
+      - name: Build fixture wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fixture_dir="${RUNNER_TEMP}/installer-smoke-fixture"
+          mkdir -p "$fixture_dir/src/installer_smoke_fixture"
+
+          cat > "$fixture_dir/pyproject.toml" <<'TOML'
+          [build-system]
+          requires = ["setuptools>=69", "wheel"]
+          build-backend = "setuptools.build_meta"
+
+          [project]
+          name = "installer-smoke-fixture"
+          version = "0.1.0"
+
+          [project.scripts]
+          installer-smoke-fixture = "installer_smoke_fixture.cli:main"
+          TOML
+
+          cat > "$fixture_dir/src/installer_smoke_fixture/__init__.py" <<'PY'
+          __all__ = []
+          PY
+
+          cat > "$fixture_dir/src/installer_smoke_fixture/cli.py" <<'PY'
+          def main() -> None:
+              print("installer-smoke-fixture ok")
+          PY
+
+          python -m pip install --upgrade build
+          python -m build --wheel --outdir dist "$fixture_dir"
+      - name: Run local action
+        uses: ./
+        with:
+          artifact-wheel: dist/installer_smoke_fixture-0.1.0-py3-none-any.whl
+          command-name: ${{ env.SMOKE_COMMAND_NAME }}
+          installer-smoke-installers: pip,pipx,uv
+          package-name: ${{ env.SMOKE_PACKAGE_NAME }}
+          smoke-commands: |
+            installer-smoke-fixture
