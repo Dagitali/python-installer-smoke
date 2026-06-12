@@ -1,0 +1,112 @@
+# ci.yml
+# python-installer-smoke
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Actions workflow for continuous integration (CI).
+#
+# Responsibilities
+# - Run cross-platform validation for the repository action.
+# - Confirm the action can install and smoke-test a wheel artifact with
+#   supported installers on GitHub-hosted runner operating systems.
+# - Keep heavier action compatibility checks separate from the faster PR gate.
+#
+# Maintainer Notes
+# - Global permissions are intentionally omitted; each job declares the minimum
+#   permissions it needs.
+# - External GitHub Actions are pinned to full commit SHAs to reduce supply-
+#   chain risk.
+# - Keep required pull-request and merge-queue gates in `pr.yml`.
+# - The dynamic run name is part of the workflow contract: it should identify
+#   the short-lived source branch and the long-running target branch for PR
+#   review clarity.
+#
+# References
+# - GitHub Actions metadata syntax: https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
+# - GitHub Actions expressions reference: https://docs.github.com/en/actions/learn-github-actions/expressions
+# - GitHub Actions security hardening guide: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+# - GitHub Actions workflow syntax reference: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+# - GitHub pull request documentation: https://docs.github.com/en/pull-requests
+# - GitHub merge queue documentation: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-merge-queues
+
+---
+
+name: CI
+
+run-name: >-
+  ${{
+    github.event_name == 'pull_request' &&
+    format('CI: {0} -> {1}', github.head_ref, github.base_ref) ||
+    github.event_name == 'merge_group' &&
+    format('CI: merge queue for {0}', github.ref_name) ||
+    'CI: manual dispatch'
+  }}
+
+on:
+  pull_request:
+    branches:
+      # Long-lived GitFlow branches
+      - main
+      - develop
+  merge_group:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  installer-compatibility:
+    name: ${{ matrix.installer }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        installer: [pip, pipx, uv]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
+      - name: Build fixture wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fixture_dir="${RUNNER_TEMP}/installer-smoke-fixture"
+          mkdir -p "$fixture_dir/src/installer_smoke_fixture"
+
+          cat > "$fixture_dir/pyproject.toml" <<'TOML'
+          [build-system]
+          requires = ["setuptools>=69", "wheel"]
+          build-backend = "setuptools.build_meta"
+
+          [project]
+          name = "installer-smoke-fixture"
+          version = "0.1.0"
+
+          [project.scripts]
+          installer-smoke-fixture = "installer_smoke_fixture.cli:main"
+          TOML
+
+          cat > "$fixture_dir/src/installer_smoke_fixture/__init__.py" <<'PY'
+          __all__ = []
+          PY
+
+          cat > "$fixture_dir/src/installer_smoke_fixture/cli.py" <<'PY'
+          def main() -> None:
+              print("installer-smoke-fixture ok")
+          PY
+
+          python -m pip install --upgrade build
+          python -m build --wheel --outdir dist "$fixture_dir"
+      - name: Run local action with ${{ matrix.installer }}
+        uses: ./
+        with:
+          artifact-wheel: dist/installer_smoke_fixture-0.1.0-py3-none-any.whl
+          command-name: installer-smoke-fixture
+          installer-smoke-installers: ${{ matrix.installer }}
+          package-name: installer-smoke-fixture
+          smoke-commands: |
+            installer-smoke-fixture

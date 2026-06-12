@@ -1,0 +1,270 @@
+# Branch Protection
+
+This document defines the recommended GitHub branch protection configuration for the protected
+`main` and `develop` branches when python-installer-smoke is operated with GitFlow.
+
+- [Purpose](#purpose)
+- [Recommended Required Checks](#recommended-required-checks)
+  - [Pull Request Baseline](#pull-request-baseline)
+    - [Policy Categories](#policy-categories)
+    - [Current Resolved Check Names](#current-resolved-check-names)
+    - [Current Required Check Names To Select In GitHub](#current-required-check-names-to-select-in-github)
+  - [Advisory Categories](#advisory-categories)
+  - [Current Advisory Examples](#current-advisory-examples)
+- [Shared Protection Baseline](#shared-protection-baseline)
+  - [Branch Protections](#branch-protections)
+- [Branch Protection Checklist For `main`](#branch-protection-checklist-for-main)
+- [Branch Protection Checklist For `develop`](#branch-protection-checklist-for-develop)
+- [How To Disallow Direct Pushes](#how-to-disallow-direct-pushes)
+- [How To Update Required Checks In GitHub](#how-to-update-required-checks-in-github)
+- [Maintenance Notes](#maintenance-notes)
+
+## Purpose
+
+These protections exist to enforce three repository policies:
+
+- No direct pushes to `main`
+- No direct pushes to `develop`
+- No merge into either protected branch unless the required CI checks pass
+
+Local hooks in `.pre-commit-config.yaml` complement this policy, but GitHub branch protection is the
+authoritative enforcement layer in the current repository configuration.
+
+## Recommended Required Checks
+
+Choose the required-check baseline that matches how the repository accepts pull requests (PRs).
+
+Because `.github/workflows/ci.yml` uses a matrix for operating systems and Python versions, GitHub
+exposes expanded matrix job names in the branch protection UI rather than the template name shown in
+the YAML. Select those expanded names when configuring required checks.
+
+The current workflow model is staged rather than post-merge:
+
+- `.github/workflows/pr.yml` provides the lighter required pull-request baseline and the
+  `merge_group` coverage used by merge queue.
+- `.github/workflows/ci.yml` provides heavier pre-merge validation for pull requests targeting the
+  protected `main` and `develop` branches and also runs on `merge_group` for merge queue.
+
+That means the GitHub branch-protection policy should distinguish between the minimum merge gate
+that always runs and the heavier pre-merge checks that you may choose to require for protected
+branches.
+
+### Pull Request Baseline
+
+Use this baseline for protected-branch merge gates. It covers the checks that run for both
+`pull_request` and `merge_group` in `pr.yml`.
+
+#### Policy Categories
+
+- GitFlow target-branch enforcement for pull requests
+- Root action metadata presence
+- YAML syntax validation for GitHub configuration
+- Fast local-action smoke test on Ubuntu
+
+These categories define the minimum merge gate for protected branches.
+
+#### Current Resolved Check Names
+
+In the current PR-gates workflow, the baseline above resolves to:
+
+- `Guard PR target branch`
+- `Validate repository metadata`
+- `Smoke test action`
+
+Additional CI jobs are still useful, and they can be made required for normal pull-request merges
+into `main` and `develop` if you want the heavier pre-merge workflow to block those merges.
+
+#### Current Required Check Names To Select In GitHub
+
+When configuring `main` or `develop` branch protection rules in the GitHub UI, select these PR-gate
+job names as the minimum required checks:
+
+- `Guard PR target branch`
+- `Validate repository metadata`
+- `Smoke test action`
+
+### Advisory Categories
+
+- Cross-platform installer smoke tests
+- Supported installer checks on GitHub-hosted runner operating systems
+
+### Current Advisory Examples
+
+In the current CI workflow, those advisory categories resolve to expanded matrix job names like:
+
+- `pip on ubuntu-latest`
+- `pipx on ubuntu-latest`
+- `uv on ubuntu-latest`
+- `pip on macos-latest`
+- `pipx on macos-latest`
+- `uv on macos-latest`
+- `pip on windows-latest`
+- `pipx on windows-latest`
+- `uv on windows-latest`
+
+If you want the heavier pre-merge workflow to block normal pull-request merges into `main` and
+`develop`, add the full emitted CI matrix:
+
+- `pip on ubuntu-latest`
+- `pipx on ubuntu-latest`
+- `uv on ubuntu-latest`
+- `pip on macos-latest`
+- `pipx on macos-latest`
+- `uv on macos-latest`
+- `pip on windows-latest`
+- `pipx on windows-latest`
+- `uv on windows-latest`
+
+That keeps the staged PR-gates and heavier-CI layout intact without collapsing everything back into
+a single workflow. Because `ci.yml` also runs on `merge_group`, those heavier checks can be made
+required for queued merges too when merge queue is enabled.
+
+## Shared Protection Baseline
+
+Apply this baseline to both protected branches:
+
+- Require a PR before merging
+- Dismiss stale approvals when new commits are pushed
+- Require conversation resolution before merging
+- Require status checks to pass before merging
+- Require branches to be up to date before merging
+- Add the required checks listed above
+- If merge queue is enabled, keep the `merge_group` trigger in PR Gates so the same checks run for
+  queued merges
+
+In GitHub, these controls are typically split across PR rules, status check rules, and branch
+protections.
+
+### Branch Protections
+
+- Block force pushes
+- Block branch deletion
+- Keep bypass actors empty if possible
+- If bypass cannot be empty, restrict it to a very small maintainer/admin set
+
+## Branch Protection Checklist For `main`
+
+Target:
+
+- Branch name pattern: `main`
+- Enforcement: `Active`
+
+Branch-specific additions:
+
+- Require `2` approvals
+- Require Code Owners review
+
+Recommended baseline:
+
+- Require the full pull-request baseline from `pr.yml`.
+- Consider also requiring the heavier `ci.yml` jobs on `main` if you want release-oriented pull
+  requests into `main` to satisfy the extended action compatibility matrix before merge.
+
+Optional hardening:
+
+- Require signed commits
+- Require merge queue
+
+## Branch Protection Checklist For `develop`
+
+Target:
+
+- Branch name pattern: `develop`
+- Enforcement: `Active`
+
+Branch-specific additions:
+
+- Require `1` approval
+
+Recommended baseline:
+
+- Require the full pull-request baseline from `pr.yml`.
+- Consider also requiring the heavier `ci.yml` jobs on `develop` if you want the extended docs or
+  smoke test matrix to block feature integration into `develop`.
+
+Optional hardening:
+
+- Require Code Owners review for sensitive paths
+- Require merge queue if `develop` receives enough concurrent PR traffic to make merge-order
+  conflicts common
+
+## How To Disallow Direct Pushes
+
+The reliable way to disallow direct pushes is to protect the branch and require PRs. CI alone cannot
+block a normal direct push after the fact, because GitHub Actions runs only after the push exists.
+
+This repository currently applies these controls with classic branch protection on `main` and
+`develop`, not repository rulesets.
+
+In GitHub:
+
+1. Open repository `Settings`.
+2. Open `Branches`.
+3. Open the branch protection rule for `main` or `develop`.
+4. Enable `Require a PR before merging`.
+5. For `main`, enable `Require review from Code Owners`.
+6. Enable `Require status checks to pass before merging`.
+7. Enable `Require branches to be up to date before merging`.
+8. Enable `Block force pushes`.
+9. Enable `Block deletions`.
+10. Remove bypass actors unless there is a strict operational need.
+
+## How To Update Required Checks In GitHub
+
+After the workflow split and the later `ci.yml` trigger redesign, update the protected-branch
+protections in GitHub so the minimum required checks come from `pr.yml`, then add the heavier
+`ci.yml` checks if you want that extended pre-merge validation to be blocking on `main` and
+`develop`.
+
+In GitHub:
+
+1. Open repository `Settings`.
+2. Open `Branches`.
+3. Open the branch protection rule for `main`.
+4. Under `Require status checks to pass`, remove any stale checks emitted by the heavier CI or old
+   workflow filenames.
+5. Add these minimum required checks from `pr.yml`:
+  - `Guard PR target branch`
+  - `Validate repository metadata`
+  - `Smoke test action`
+6. If you want the heavier pre-merge `ci.yml` workflow to block ordinary PR merges into `main` and
+   `develop`, also add these checks:
+  - `pip on ubuntu-latest`
+  - `pipx on ubuntu-latest`
+  - `uv on ubuntu-latest`
+  - `pip on macos-latest`
+  - `pipx on macos-latest`
+  - `uv on macos-latest`
+  - `pip on windows-latest`
+  - `pipx on windows-latest`
+  - `uv on windows-latest`
+7. Save the `main` branch protection rule.
+8. Repeat the same status-check set for the `develop` branch protection rule unless you
+   intentionally want a different protected-branch policy.
+
+If merge queue is enabled, keep the heavier `ci.yml` checks aligned with the same required-check
+policy you use for normal pull requests into `main` and `develop`.
+
+With that configuration in place:
+
+- Contributors push to feature, bugfix, hotfix, release, chore, ci, or docs branches
+- Feature branches cannot merge into `main` while `Guard PR target branch` is required
+- Pull requests into `main` and `develop` carry both the PR-gates results and the heavier CI results
+- `main` and `develop` cannot be updated directly by ordinary pushes
+- Merges remain blocked until the required checks pass
+
+## Maintenance Notes
+
+- GitHub required checks are tied to the exact job names emitted by the PR-gates workflow after
+  matrix expansion. In this repository, that means branch protection should reference concrete names
+  such as `Guard PR target branch` and `uv on ubuntu-latest`, not the template strings shown in the
+  YAML.
+- Treat installer-specific and OS-specific names in this document as current examples, not permanent
+  policy. When the support matrix changes, refresh the exact examples here and in the GitHub branch
+  protection UI to match the emitted checks.
+- The heavier CI jobs now run on both `pull_request` and `merge_group` for `main` and `develop`, so
+  protected-branch required checks can stay aligned between normal PR merges and merge queue.
+- The PR-target guard intentionally enforces these GitFlow merge paths: `feature/* -> develop`,
+  `release/* -> main`, and `hotfix/* -> main`.
+- The local `no-commit-to-branch` pre-commit hook should protect `main` and `develop`, but it is
+  only a contributor convenience. GitHub branch protection remains authoritative.
