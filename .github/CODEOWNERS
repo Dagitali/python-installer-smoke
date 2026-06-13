@@ -21,12 +21,24 @@
 
 
 # Repository automation and governance
+/.editorconfig                    @djrlj694
+/.gitattributes                   @djrlj694
 /.github/                         @djrlj694
+/.gitignore                       @djrlj694
+/.pre-commit-config.yaml          @djrlj694
 
 # Release and automation surfaces
+/action.yml                       @djrlj694
 /CI-CD-WORKFLOWS.md               @djrlj694
 /RELEASE-POLICY.md                @djrlj694
 
 # Security and community health
+/CODE_OF_CONDUCT.md               @djrlj694
+/CONTRIBUTING.md                  @djrlj694
 /SECURITY.md                      @djrlj694
 /SUPPORT.md                       @djrlj694
+
+# Published documentation and repository metadata
+/LICENSE                          @djrlj694
+/README.md                        @djrlj694
+/REFERENCES.md                    @djrlj694
